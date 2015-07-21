@@ -1198,14 +1198,19 @@
       }
     }
   };
-  d3.behavior.drag = function() {
-    var event = d3_eventDispatch(drag, "drag", "dragstart", "dragend"), origin = null, mousedown = dragstart(d3_noop, d3.mouse, d3_window, "mousemove", "mouseup"), touchstart = dragstart(d3_behavior_dragTouchId, d3.touch, d3_identity, "touchmove", "touchend");
+  d3.behavior.drag = function(options) {
+    var event = d3_eventDispatch(drag, "drag", "dragstart", "dragend"), origin = null, mousedown = dragstart(d3_noop, d3.mouse, d3_window, "mousemove", "mouseup", options), touchstart = dragstart(d3_behavior_dragTouchId, d3.touch, d3_identity, "touchmove", "touchend");
     function drag() {
       this.on("mousedown.drag", mousedown).on("touchstart.drag", touchstart);
     }
-    function dragstart(id, position, subject, move, end) {
+    function dragstart(id, position, subject, move, end, options) {
       return function() {
-        var that = this, target = d3.event.target, parent = that.parentNode, dispatch = event.of(that, arguments), dragged = 0, dragId = id(), dragName = ".drag" + (dragId == null ? "" : "-" + dragId), dragOffset, dragSubject = d3.select(subject(target)).on(move + dragName, moved).on(end + dragName, ended), dragRestore = d3_event_dragSuppress(target), position0 = position(parent, dragId);
+        var that = this, target = d3.event.target, parent = that.parentNode, dispatch = event.of(that, arguments), dragged = 0, dragId = id(), dragName = ".drag" + (dragId == null ? "" : "-" + dragId), dragOffset, dragSubject, dragRestore, position0 = position(parent, dragId);
+        if (options && options.buttons && !(d3.event.button in options.buttons)) {
+          return;
+        }
+        dragSubject = d3.select(subject(target)).on(move + dragName, moved).on(end + dragName, ended);
+        dragRestore = d3_event_dragSuppress(target);
         if (origin) {
           dragOffset = origin.apply(that, arguments);
           dragOffset = [ dragOffset.x - position0[0], dragOffset.y - position0[1] ];
@@ -1298,7 +1303,7 @@
     interpolate.duration = S * 1e3;
     return interpolate;
   };
-  d3.behavior.zoom = function() {
+  d3.behavior.zoom = function(options) {
     var view = {
       x: 0,
       y: 0,
@@ -1314,7 +1319,7 @@
       }, "MozMousePixelScroll");
     }
     function zoom(g) {
-      g.on(mousedown, mousedowned).on(d3_behavior_zoomWheel + ".zoom", mousewheeled).on("dblclick.zoom", dblclicked).on(touchstart, touchstarted);
+      g.on(mousedown, mousedowned(options)).on(d3_behavior_zoomWheel + ".zoom", mousewheeled).on("dblclick.zoom", dblclicked).on(touchstart, touchstarted);
     }
     zoom.event = function(g) {
       g.each(function() {
@@ -1465,20 +1470,26 @@
         type: "zoomend"
       }), center0 = null;
     }
-    function mousedowned() {
-      var that = this, target = d3.event.target, dispatch = event.of(that, arguments), dragged = 0, subject = d3.select(d3_window(that)).on(mousemove, moved).on(mouseup, ended), location0 = location(d3.mouse(that)), dragRestore = d3_event_dragSuppress(that);
-      d3_selection_interrupt.call(that);
-      zoomstarted(dispatch);
-      function moved() {
-        dragged = 1;
-        translateTo(d3.mouse(that), location0);
-        zoomed(dispatch);
-      }
-      function ended() {
-        subject.on(mousemove, null).on(mouseup, null);
-        dragRestore(dragged && d3.event.target === target);
-        zoomended(dispatch);
-      }
+    function mousedowned(options) {
+      return function() {
+        var that = this, target = d3.event.target, dispatch = event.of(that, arguments), dragged = 0, subject, location0 = location(d3.mouse(that)), dragRestore = d3_event_dragSuppress(that);
+        if (options && options.buttons && !(d3.event.button in options.buttons)) {
+          return;
+        }
+        subject = d3.select(d3_window(that)).on(mousemove, moved).on(mouseup, ended);
+        d3_selection_interrupt.call(that);
+        zoomstarted(dispatch);
+        function moved() {
+          dragged = 1;
+          translateTo(d3.mouse(that), location0);
+          zoomed(dispatch);
+        }
+        function ended() {
+          subject.on(mousemove, null).on(mouseup, null);
+          dragRestore(dragged && d3.event.target === target);
+          zoomended(dispatch);
+        }
+      };
     }
     function touchstarted() {
       var that = this, dispatch = event.of(that, arguments), locations0 = {}, distance0 = 0, scale0, zoomName = ".zoom-" + d3.event.changedTouches[0].identifier, touchmove = "touchmove" + zoomName, touchend = "touchend" + zoomName, targets = [], subject = d3.select(that), dragRestore = d3_event_dragSuppress(that);
@@ -6401,9 +6412,9 @@
     force.stop = function() {
       return force.alpha(0);
     };
-    force.drag = function() {
-      if (!drag) drag = d3.behavior.drag().origin(d3_identity).on("dragstart.force", d3_layout_forceDragstart).on("drag.force", dragmove).on("dragend.force", d3_layout_forceDragend);
-      if (!arguments.length) return drag;
+    force.drag = function(options) {
+      if (!drag) drag = d3.behavior.drag(options).origin(d3_identity).on("dragstart.force", d3_layout_forceDragstart).on("drag.force", dragmove).on("dragend.force", d3_layout_forceDragend);
+      if (!arguments.length || !options.length) return drag;
       this.on("mouseover.force", d3_layout_forceMouseover).on("mouseout.force", d3_layout_forceMouseout).call(drag);
     };
     function dragmove(d) {

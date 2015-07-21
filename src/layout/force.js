@@ -283,14 +283,14 @@ d3.layout.force = function() {
   };
 
   // use `node.call(force.drag)` to make nodes draggable
-  force.drag = function() {
-    if (!drag) drag = d3.behavior.drag()
+  force.drag = function(options) {
+    if (!drag) drag = d3.behavior.drag(options)
         .origin(d3_identity)
         .on("dragstart.force", d3_layout_forceDragstart)
         .on("drag.force", dragmove)
         .on("dragend.force", d3_layout_forceDragend);
 
-    if (!arguments.length) return drag;
+    if (!arguments.length || !options.length) return drag;
 
     this.on("mouseover.force", d3_layout_forceMouseover)
         .on("mouseout.force", d3_layout_forceMouseout)

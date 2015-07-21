@@ -8,7 +8,7 @@ import "../selection/selection";
 import "../interpolate/zoom";
 import "behavior";
 
-d3.behavior.zoom = function() {
+d3.behavior.zoom = function(options) {
   var view = {x: 0, y: 0, k: 1},
       translate0, // translate when we started zooming (to avoid drift)
       center0, // implicit desired position of translate0 after zooming
@@ -38,7 +38,7 @@ d3.behavior.zoom = function() {
   }
 
   function zoom(g) {
-    g   .on(mousedown, mousedowned)
+    g   .on(mousedown, mousedowned(options))
         .on(d3_behavior_zoomWheel + ".zoom", mousewheeled)
         .on("dblclick.zoom", dblclicked)
         .on(touchstart, touchstarted);
@@ -185,28 +185,35 @@ d3.behavior.zoom = function() {
     if (!--zooming) dispatch({type: "zoomend"}), center0 = null;
   }
 
-  function mousedowned() {
-    var that = this,
-        target = d3.event.target,
-        dispatch = event.of(that, arguments),
-        dragged = 0,
-        subject = d3.select(d3_window(that)).on(mousemove, moved).on(mouseup, ended),
-        location0 = location(d3.mouse(that)),
-        dragRestore = d3_event_dragSuppress(that);
+  function mousedowned(options) {
+    return function() {
+      var that = this,
+          target = d3.event.target,
+          dispatch = event.of(that, arguments),
+          dragged = 0,
+          subject,
+          location0 = location(d3.mouse(that)),
+          dragRestore = d3_event_dragSuppress(that);
 
-    d3_selection_interrupt.call(that);
-    zoomstarted(dispatch);
+      if (options && options.buttons && !(d3.event.button in options.buttons)) {
+        return;
+      }
+      subject = d3.select(d3_window(that)).on(mousemove, moved).on(mouseup, ended);
 
-    function moved() {
-      dragged = 1;
-      translateTo(d3.mouse(that), location0);
-      zoomed(dispatch);
-    }
+      d3_selection_interrupt.call(that);
+      zoomstarted(dispatch);
 
-    function ended() {
-      subject.on(mousemove, null).on(mouseup, null);
-      dragRestore(dragged && d3.event.target === target);
-      zoomended(dispatch);
+      function moved() {
+        dragged = 1;
+        translateTo(d3.mouse(that), location0);
+        zoomed(dispatch);
+      }
+
+      function ended() {
+        subject.on(mousemove, null).on(mouseup, null);
+        dragRestore(dragged && d3.event.target === target);
+        zoomended(dispatch);
+      }
     }
   }
 

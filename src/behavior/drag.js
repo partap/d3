@@ -7,10 +7,10 @@ import "../event/mouse";
 import "../event/touch";
 import "behavior";
 
-d3.behavior.drag = function() {
+d3.behavior.drag = function(options) {
   var event = d3_eventDispatch(drag, "drag", "dragstart", "dragend"),
       origin = null,
-      mousedown = dragstart(d3_noop, d3.mouse, d3_window, "mousemove", "mouseup"),
+      mousedown = dragstart(d3_noop, d3.mouse, d3_window, "mousemove", "mouseup", options),
       touchstart = dragstart(d3_behavior_dragTouchId, d3.touch, d3_identity, "touchmove", "touchend");
 
   function drag() {
@@ -18,7 +18,7 @@ d3.behavior.drag = function() {
         .on("touchstart.drag", touchstart);
   }
 
-  function dragstart(id, position, subject, move, end) {
+  function dragstart(id, position, subject, move, end, options) {
     return function() {
       var that = this,
           target = d3.event.target,
@@ -28,9 +28,16 @@ d3.behavior.drag = function() {
           dragId = id(),
           dragName = ".drag" + (dragId == null ? "" : "-" + dragId),
           dragOffset,
-          dragSubject = d3.select(subject(target)).on(move + dragName, moved).on(end + dragName, ended),
-          dragRestore = d3_event_dragSuppress(target),
+          dragSubject,
+          dragRestore,
           position0 = position(parent, dragId);
+
+      if (options && options.buttons && !(d3.event.button in options.buttons)) {
+        return;
+      }
+      dragSubject = d3.select(subject(target)).on(move + dragName, moved).on(end + dragName, ended);
+      dragRestore = d3_event_dragSuppress(target);
+
 
       if (origin) {
         dragOffset = origin.apply(that, arguments);
